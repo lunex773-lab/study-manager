@@ -29,6 +29,31 @@
     --faint:#37283F; --accent:#F17FA5; --flame:#FFB454; --danger:#FF6B6B;
     --s0:#4A3A52; --s1:#8E7CF2; --s2:#F2A83B; --s3:#3FCF8E; --heat:#F17FA5; --shadow:rgba(0,0,0,.4);
   }
+  [data-theme="carbon"]{
+    --bg:#0F1115; --card:#1A1D23; --cardAlt:#242830; --text:#F0F2F5; --subtext:#9BA1AC;
+    --faint:#2E333C; --accent:#6E9BFF; --flame:#FFB454; --danger:#F87171;
+    --s0:#4A4F5A; --s1:#5D8BF4; --s2:#F2A83B; --s3:#3FCF8E; --heat:#3FCF8E; --shadow:rgba(0,0,0,.45);
+  }
+  [data-theme="ocean"]{
+    --bg:#0A141B; --card:#122029; --cardAlt:#1A2D38; --text:#E8F3F8; --subtext:#8DA3AE;
+    --faint:#213945; --accent:#38BDF8; --flame:#FFB454; --danger:#F87171;
+    --s0:#3A4E58; --s1:#38A8D8; --s2:#F2A83B; --s3:#3FCF8E; --heat:#38BDF8; --shadow:rgba(0,0,0,.45);
+  }
+  [data-theme="forest"]{
+    --bg:#0C1512; --card:#14201C; --cardAlt:#1D2C26; --text:#EAF3EE; --subtext:#93A89D;
+    --faint:#243830; --accent:#4FBE8B; --flame:#FFB454; --danger:#F0776B;
+    --s0:#3C4F47; --s1:#4A9E8E; --s2:#E2A13C; --s3:#5FD39A; --heat:#4FBE8B; --shadow:rgba(0,0,0,.45);
+  }
+  [data-theme="grape"]{
+    --bg:#120E1B; --card:#1C1526; --cardAlt:#271D33; --text:#F1ECF7; --subtext:#A996B5;
+    --faint:#312542; --accent:#A78BFA; --flame:#FFB454; --danger:#F87171;
+    --s0:#463A55; --s1:#8E7CF2; --s2:#F2A83B; --s3:#3FCF8E; --heat:#A78BFA; --shadow:rgba(0,0,0,.45);
+  }
+  [data-theme="paper"]{
+    --bg:#F7F8FA; --card:#FFFFFF; --cardAlt:#EEF1F5; --text:#1B1F27; --subtext:#69707C;
+    --faint:#E3E7EE; --accent:#3B6FE0; --flame:#EA8A0E; --danger:#E0483D;
+    --s0:#C2C8D2; --s1:#3B7BF0; --s2:#E29A1C; --s3:#1EA968; --heat:#1EA968; --shadow:rgba(60,70,90,.12);
+  }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;padding:0;height:100%}
   body{
@@ -194,6 +219,15 @@
   input[type="color"]::-moz-color-swatch{border:1.5px solid var(--faint);border-radius:12px}
   .accentrow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:2px}
   .aswatch{width:30px;height:30px;border-radius:15px;border:3px solid transparent;flex:none}
+  .themegrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .themecard{border:2px solid var(--faint);border-radius:14px;padding:7px;background:var(--card);text-align:center;transition:transform .08s}
+  .themecard:active{transform:scale(.96)}
+  .themecard.on{border-color:var(--accent)}
+  .themeprev{height:44px;border-radius:9px;background:var(--bg);padding:7px;display:flex;align-items:flex-end;overflow:hidden}
+  .themebar{height:20px;width:100%;border-radius:6px;background:var(--card);display:flex;align-items:center;gap:5px;padding:0 6px}
+  .themedot{width:9px;height:9px;border-radius:5px;background:var(--accent);flex:none}
+  .themedot2{height:6px;flex:1;border-radius:3px;background:var(--cardAlt)}
+  .themename{font-size:10px;font-weight:800;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 </style>
 </head>
 <body>
@@ -211,7 +245,6 @@ const HEAT_WEEKS = 15;
 const STAGE_LABELS = ["未着手","学習中","要復習","完璧"];
 const STAGE_DESCS  = ["まだ手をつけていない","一度は学習した","解けるが不安が残る","いつでも解ける自信あり"];
 const STAGE_VARS   = ["--s0","--s1","--s2","--s3"];
-const POMODORO_SEC = 25*60;
 const MANUAL_PRESETS = [15,25,30,45,60,90];
 const OLD_KEY = "kobe-study-tracker:v1";
 const STAGES = [
@@ -437,9 +470,9 @@ function donut(slices,total){
 
 /* ---------- 統計データ(期間フィルタ) ---------- */
 function rangeWindow(range){
-  const today=parseDate(todayStr()).getTime(), DAY=86400000;
-  if(range==="week") return {from:today-6*DAY, to:today};
-  if(range==="month") return {from:today-27*DAY, to:today};
+  const t=parseDate(todayStr());
+  if(range==="week"){ const dow=t.getDay(); const sun=new Date(t); sun.setDate(t.getDate()-dow); const sat=new Date(sun); sat.setDate(sun.getDate()+6); return {from:sun.getTime(), to:sat.getTime()}; }
+  if(range==="month"){ const first=new Date(t.getFullYear(),t.getMonth(),1); const last=new Date(t.getFullYear(),t.getMonth()+1,0); return {from:first.getTime(), to:last.getTime()}; }
   if(range==="goal" && db.settings.goal) return {from:parseDate(db.settings.goal.start).getTime(), to:parseDate(db.settings.goal.end).getTime()};
   return {from:-Infinity, to:Infinity};
 }
@@ -558,9 +591,9 @@ function radar(data,size,color){
 }
 function heatmap(mins){
   const today=parseDate(todayStr()), dow=today.getDay();
-  const start=new Date(today); start.setDate(today.getDate()-dow-(HEAT_WEEKS-1)*7);
+  const start=new Date(today); start.setDate(today.getDate()-dow-(HEAT_WEEKS-1)*7); // 左端=最も過去の週
   let cols="";
-  for(let w=0;w<HEAT_WEEKS;w++){
+  for(let w=0;w<HEAT_WEEKS;w++){            // w=0 左端(過去)、右へ行くほど最近。右端が今週
     let cells="";
     for(let d=0;d<7;d++){
       const dt=new Date(start); dt.setDate(start.getDate()+w*7+d);
@@ -824,7 +857,7 @@ function recordHTML(){
     const s=db.subjects.find(x=>x.id===timer.subjectId);
     const tp=timer.topicId?db.topics.find(x=>x.id===timer.topicId):null;
     return `<div class="screen safe-top"><div class="runwrap">
-      <div class="muted" style="font-size:13px;font-weight:700">${timer.mode==="pomodoro"?"ポモドーロ 25分":"ストップウォッチ"}</div>
+      <div class="muted" style="font-size:13px;font-weight:700">${timer.mode==="countdown"?Math.round(timer.durationSec/60)+"分 タイマー":"ストップウォッチ"}</div>
       <div class="clip" style="font-size:20px;font-weight:900;margin-top:6px;max-width:90%">${esc(s?s.name:"")}${tp?" / "+esc(tp.name):""}</div>
       <div style="margin:34px 0">${ring(240,15,0,s?s.color:"--accent",`<span class="tnum" id="tNum">--:--</span><span class="muted" id="tLbl" style="font-size:12px;font-weight:700;margin-top:4px"></span>`)}</div>
       <button class="btn" style="background:var(--s3)" data-act="finishTimer">終了して記録する</button>
@@ -847,16 +880,18 @@ function recordHTML(){
       <div class="sect" style="margin-top:0">科目</div><div class="chips">${subs.map(s=>`<button class="chip ${recState.subject===s.id?"on":""}" style="${recState.subject===s.id?`background:${s.color}`:""}" data-act="recSub:${s.id}">${esc(s.name)}</button>`).join("")}</div>
       ${ts.length?`<div class="sect">分野(任意)</div><div class="chips"><button class="chip ${recState.topic==null?"on":""}" style="${recState.topic==null?"background:var(--accent)":""}" data-act="recTop:0">指定しない</button>${ts.map(t=>`<button class="chip ${recState.topic===t.id?"on":""}" style="${recState.topic===t.id?`background:${cur.color}`:""}" data-act="recTop:${t.id}">${esc(t.name)}</button>`).join("")}</div>`:""}
       <div class="sect">タイマー</div><div class="chips">
-        <button class="chip ${recState.mode==="pomodoro"?"on":""}" style="${recState.mode==="pomodoro"?"background:var(--accent)":""}" data-act="recMode:pomodoro">ポモドーロ 25分</button>
-        <button class="chip ${recState.mode==="stopwatch"?"on":""}" style="${recState.mode==="stopwatch"?"background:var(--accent)":""}" data-act="recMode:stopwatch">ストップウォッチ</button>
+        <button class="chip ${recState.mode==="countdown"?"on":""}" style="${recState.mode==="countdown"?"background:var(--accent);color:#0D1220":""}" data-act="recMode:countdown">カウントダウン</button>
+        <button class="chip ${recState.mode==="stopwatch"?"on":""}" style="${recState.mode==="stopwatch"?"background:var(--accent);color:#0D1220":""}" data-act="recMode:stopwatch">ストップウォッチ</button>
       </div>
-      <button class="btn" style="margin-top:10px;background:${cur?cur.color:"var(--accent)"}" data-act="startTimer">スタート</button>
+      ${recState.mode==="countdown"?`<div class="chips" style="margin-top:2px">${[15,25,30,45,60,90].map(m=>`<button class="chip ${recState.timerMin===m?"on":""}" style="${recState.timerMin===m?"background:var(--accent);color:#0D1220":""}" data-act="recMin:${m}">${m}分</button>`).join("")}</div>
+      <div class="row" style="gap:8px;margin-top:4px"><input class="field" id="timerMinInput" value="${esc(String(recState.timerMin))}" inputmode="numeric" placeholder="自分で設定(分)" style="flex:1"><span class="muted" style="font-size:13px;font-weight:700">分</span></div>`:""}
+      <button class="btn" style="margin-top:12px;background:${cur?cur.color:"var(--accent)"}" data-act="startTimer">スタート${recState.mode==="countdown"?`（${recState.timerMin}分）`:""}</button>
       <button class="btn ghost" style="margin-top:10px" data-act="manual">${icon("pencil",16)}あとから手動で記録</button>
       <div class="muted center" style="font-size:11px;margin-top:14px">タイマーはこの画面を開いている間だけ動きます</div>`;
   }
   return `<div class="screen safe-top"><div class="hd"><h1>記録</h1></div>${body}</div>`;
 }
-let recState={subject:null,topic:null,mode:"pomodoro"};
+let recState={subject:null,topic:null,mode:"countdown",timerMin:25};
 
 /* ---------- 統計 ---------- */
 function statsHTML(){
@@ -871,9 +906,9 @@ function statsHTML(){
     rows.forEach(r=>{bySub[r.subjectId]=(bySub[r.subjectId]||0)+r.durationMin;});
     return {date,label:WEEKDAY_JP[weekdayOf(date)],isToday:date===todayStr(),total:rows.reduce((a,r)=>a+r.durationMin,0),segments:Object.keys(bySub).map(k=>({color:colorOf.get(Number(k))||"var(--faint)",minutes:bySub[k]}))};
   });
-  const tile=(l,v)=>`<div class="card" style="flex:1;padding:14px"><div class="muted" style="font-size:11px;font-weight:700">${l}</div><div style="font-size:17px;font-weight:900;margin-top:4px">${v}</div></div>`;
+  const tile=(l,v)=>`<div class="card" style="flex:1;padding:14px;display:flex;flex-direction:column;justify-content:center;min-height:76px"><div class="muted" style="font-size:11px;font-weight:700">${l}</div><div style="font-size:17px;font-weight:900;margin-top:4px">${v}</div></div>`;
 
-  const chipDefs=[["week","7日間"],["month","28日間"]];
+  const chipDefs=[["week","週間"],["month","月間"]];
   if(db.settings.goal) chipDefs.push(["goal",db.settings.goal.label]);
   chipDefs.push(["all","全期間"]);
   const chipHTML=`<div class="chips">${chipDefs.map(([k,l])=>`<button class="chip ${range===k?"on":""}" style="${range===k?"background:var(--accent);color:#0D1220":""}" data-act="statsRange:${k}">${esc(l)}</button>`).join("")}</div>`;
@@ -886,7 +921,7 @@ function statsHTML(){
   }
 
   return `<div class="screen safe-top"><div class="hd"><h1>統計</h1></div>
-    <div class="row" style="gap:10px">${tile("累計学習",formatMinutes(tot.totalMinutes))}${tile("最長連続",streak.longest+"日")}${tile("完璧の分野",tot.perfectTopics)}</div>
+    <div class="row" style="gap:10px;align-items:stretch">${tile("累計学習",formatMinutes(tot.totalMinutes))}${tile("最長連続",streak.longest+"日")}${tile("完璧の分野",tot.perfectTopics)}</div>
     <div class="sect">期間別</div>${chipHTML}
     ${goalCardHTML()}
     ${donutCard}
@@ -898,7 +933,7 @@ function statsHTML(){
 
 /* ---------- 設定 ---------- */
 function settingsHTML(){
-  const themes=[["midnight","ミッドナイト"],["daybreak","デイブレイク"],["sakura","サクラ"]];
+  const themes=[["midnight","ミッドナイト"],["carbon","カーボン"],["ocean","オーシャン"],["forest","フォレスト"],["grape","グレープ"],["sakura","サクラ"],["daybreak","デイブレイク"],["paper","ペーパー"]];
   return `${backHeader("設定")}<div class="screen">
     <div class="sect" style="margin-top:8px">受験</div>
     <div class="card press" data-act="setSchool"><div class="row"><div class="bubble" style="background:${alpha("#8AA2FF",0.15)}">🎯</div><div class="grow" style="margin-left:12px"><div style="font-weight:800;font-size:15px">志望校</div><div class="muted" style="font-size:12px;margin-top:2px">${db.settings.school?esc(db.settings.school):"未設定"}</div></div>${icon("chevronR",18)}</div></div>
@@ -908,7 +943,7 @@ function settingsHTML(){
     ${db.settings.goal?`<div class="card"><div class="row" style="justify-content:space-between"><div class="grow"><div style="font-weight:800;font-size:15px">${esc(db.settings.goal.label)}の目標</div><div class="muted" style="font-size:12px;margin-top:2px">${esc(fmtMD2(db.settings.goal.start))}〜${esc(fmtMD2(db.settings.goal.end))} ・ ${db.settings.goal.hours}時間</div></div><button class="link" data-act="editGoal">編集</button></div><div style="height:1px;background:var(--faint);margin:12px 0"></div><button data-act="deleteGoal" style="color:var(--danger);font-weight:800;font-size:13px">目標を削除</button></div>`:`<div class="card press" data-act="editGoal"><div class="row"><div class="bubble" style="background:${tint("var(--accent)",14)}">📈</div><div class="grow" style="margin-left:12px"><div style="font-weight:800;font-size:15px">期間目標を設定</div><div class="muted" style="font-size:12px;margin-top:2px">夏期など、期間内の合計時間を目標に</div></div>${icon("chevronR",18)}</div></div>`}
 
     <div class="sect">テーマ</div>
-    <div class="card"><div class="row" style="gap:10px">${themes.map(([k,name])=>{const on=db.settings.theme===k;return `<button data-act="setTheme:${k}" style="flex:1;border:2px solid ${on?"var(--accent)":"var(--faint)"};border-radius:16px;padding:8px" data-theme="${k}"><div style="height:52px;border-radius:10px;background:var(--bg);padding:8px;display:flex;align-items:flex-end"><div style="height:22px;width:100%;border-radius:6px;background:var(--card);display:flex;align-items:center;padding:0 6px"><span style="width:9px;height:9px;border-radius:5px;background:var(--accent)"></span></div></div><div style="font-size:11px;font-weight:800;margin-top:6px;color:${on?"var(--text)":"var(--subtext)"}">${name}</div></button>`;}).join("")}</div></div>
+    <div class="card"><div class="themegrid">${themes.map(([k,name])=>{const on=db.settings.theme===k;return `<button data-act="setTheme:${k}" class="themecard ${on?"on":""}" data-theme="${k}"><div class="themeprev"><div class="themebar"><span class="themedot"></span><span class="themedot2"></span></div></div><div class="themename" style="color:${on?"var(--text)":"var(--subtext)"}">${name}${on?" ✓":""}</div></button>`;}).join("")}</div><div class="muted" style="font-size:11px;margin-top:10px">テーマを選んだ上で、下のアクセントカラーで色を微調整できます。</div></div>
 
     <div class="sect">アクセントカラー</div>
     <div class="card"><div class="accentrow">
@@ -1010,6 +1045,18 @@ function modalHTML(){
       <input class="field" id="schoolInput" data-model="school" value="${esc(modalState.school)}" placeholder="例: 神戸大学" autofocus>
       <button class="btn" style="margin-top:14px" data-act="submitModal">保存</button>`);
   }
+  if(t==="subjmenu"){
+    const s=db.subjects.find(x=>x.id===modal.subjectId);
+    if(!s) return "";
+    const row=(act,label,color)=>`<button class="sheetrow press" data-act="${act}" style="width:100%"><span style="font-size:15px;font-weight:700;color:${color||"var(--text)"}">${label}</span></button>`;
+    return `<div class="sheetwrap"><div class="sheetbg" data-act="closeModal"></div><div class="sheet">
+      <div style="font-size:15px;font-weight:800;margin-bottom:8px">${esc(s.icon)} ${esc(s.name)}</div>
+      ${row("editSubject:"+s.id,"✏️ 編集")}
+      ${row("archiveSubjectC:"+s.id,"📥 アーカイブ（一覧から隠す）")}
+      ${row("deleteSubjectC:"+s.id,"🗑 削除","var(--danger)")}
+      <button class="btn ghost" style="margin-top:8px" data-act="closeModal">キャンセル</button>
+    </div></div>`;
+  }
   if(t==="stage"){
     const tp=db.topics.find(x=>x.id===modal.topicId);
     return `<div class="sheetwrap"><div class="sheetbg" data-act="closeModal"></div><div class="sheet">
@@ -1077,16 +1124,17 @@ function stopTick(){ if(timerInt){clearInterval(timerInt);timerInt=null;} }
 function updateTimerDisplay(){
   if(!timer) return;
   const elapsed=Math.floor((Date.now()-timer.startedAt)/1000);
-  if(timer.mode==="pomodoro" && elapsed>=POMODORO_SEC){ finishTimer(); return; }
+  if(timer.mode==="countdown" && elapsed>=timer.durationSec){ finishTimer(); return; }
   const num=document.getElementById("tNum"), lbl=document.getElementById("tLbl"), fg=document.querySelector(".runwrap .ringfg");
   if(!num) return;
-  if(timer.mode==="pomodoro"){ num.textContent=fmtClock(POMODORO_SEC-elapsed); lbl.textContent="残り"; }
+  if(timer.mode==="countdown"){ num.textContent=fmtClock(timer.durationSec-elapsed); lbl.textContent="残り"; }
   else { num.textContent=fmtClock(elapsed); lbl.textContent="経過"; }
-  if(fg){ const size=240,stroke=15,r=(size-stroke)/2,c=2*Math.PI*r; const prog=timer.mode==="pomodoro"?elapsed/POMODORO_SEC:(elapsed%3600)/3600; fg.style.strokeDashoffset=(c*(1-clamp01(prog))).toFixed(1); }
+  if(fg){ const size=240,stroke=15,r=(size-stroke)/2,c=2*Math.PI*r; const prog=timer.mode==="countdown"?elapsed/timer.durationSec:(elapsed%3600)/3600; fg.style.strokeDashoffset=(c*(1-clamp01(prog))).toFixed(1); }
 }
 function startTimer(){
   if(recState.subject==null) return;
-  timer={subjectId:recState.subject, topicId:recState.topic, mode:recState.mode, startedAt:Date.now()};
+  let mn=Math.round(Number(recState.timerMin)); if(!(mn>0&&mn<=600)) mn=25; recState.timerMin=mn;
+  timer={subjectId:recState.subject, topicId:recState.topic, mode:recState.mode, startedAt:Date.now(), durationSec:mn*60};
   vibrate(10);
   render(); startTick();
 }
@@ -1094,7 +1142,7 @@ function finishTimer(){
   if(!timer) return;
   stopTick();
   const sec=Math.floor((Date.now()-timer.startedAt)/1000);
-  const capped=timer.mode==="pomodoro"?Math.min(sec,POMODORO_SEC):sec;
+  const capped=timer.mode==="countdown"?Math.min(sec,timer.durationSec):sec;
   const min=Math.max(1,Math.round(capped/60));
   const info={subjectId:timer.subjectId, topicId:timer.topicId, startedAt:timer.startedAt, min:min};
   timer=null;
@@ -1123,6 +1171,7 @@ const app=document.getElementById("app");
 
 // 入力の同期(色ピック等で再描画してもテキストが消えないように)
 app.addEventListener("input",e=>{
+  if(e.target.id==="timerMinInput"){ const v=parseInt(e.target.value,10); if(Number.isFinite(v))recState.timerMin=v; return; }
   const m=e.target.getAttribute("data-model");
   if(m){ modalState[m]=e.target.value; }
 });
@@ -1164,6 +1213,8 @@ function dispatch(act,e){
     case "editSubject": openModal("subject",{editingId:Number(a)}); break;
     case "subjMenu": subjectMenu(Number(a)); break;
     case "archiveSubject": archiveSubject(Number(a)); render(); break;
+    case "archiveSubjectC": archiveSubject(Number(a)); modal=null; render(); toast("アーカイブしました"); break;
+    case "deleteSubjectC": if(confirm("この科目の分野と学習記録も削除されます。よろしいですか?")){ deleteSubject(Number(a)); modal=null; render(); toast("削除しました"); } break;
     case "deleteSubject": if(confirm("この科目の分野と学習記録も削除されます。よろしいですか?")){ deleteSubject(Number(a)); go({name:"subjects"}); } break;
 
     case "addTopic": openModal("topic",{subjectId:Number(a)}); break;
@@ -1195,6 +1246,8 @@ function dispatch(act,e){
     case "recSub": recState.subject=Number(a); recState.topic=null; render(); break;
     case "recTop": recState.topic=(a==="0"?null:Number(a)); render(); break;
     case "recMode": recState.mode=a; render(); break;
+    case "recMin": recState.timerMin=Number(a); render(); break;
+    case "statsRange": statsRange=a; render(); break;
     case "startTimer": startTimer(); break;
     case "finishTimer": finishTimer(); break;
     case "discardTimer": discardTimer(); break;
@@ -1221,14 +1274,7 @@ function dispatch(act,e){
 }
 
 /* 科目長押しメニュー(confirmベース) */
-function subjectMenu(id){
-  const s=db.subjects.find(x=>x.id===id); if(!s) return;
-  // シンプルな選択: 編集 / アーカイブ / 削除
-  const choice=prompt(`「${s.name}」\n1: 編集\n2: アーカイブ(一覧から隠す)\n3: 削除\n\n番号を入力`,"1");
-  if(choice==="1") openModal("subject",{editingId:id});
-  else if(choice==="2"){ archiveSubject(id); render(); }
-  else if(choice==="3"){ if(confirm("分野と学習記録も削除されます。よろしいですか?")){ deleteSubject(id); render(); } }
-}
+function subjectMenu(id){ const s=db.subjects.find(x=>x.id===id); if(!s) return; openModal("subjmenu",{subjectId:id}); }
 
 function submitModal(){
   const t=modal.type;
