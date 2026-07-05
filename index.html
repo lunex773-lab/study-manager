@@ -198,6 +198,8 @@
   .link{color:var(--accent);font-weight:800;font-size:13px;padding:4px;flex:none}
   .donebtn{flex:none;align-self:center;padding:9px 15px;border-radius:12px;background:var(--s3);color:#0D1220;font-weight:800;font-size:13px;transition:transform .08s}
   .donebtn:active{transform:scale(.94)}
+  .undobtn{flex:none;align-self:center;padding:9px 14px;border-radius:12px;background:var(--cardAlt);color:var(--subtext);font-weight:800;font-size:13px;transition:transform .08s}
+  .undobtn:active{transform:scale(.94)}
   .revtoggle{display:flex;align-items:center;gap:12px;width:100%;padding:12px;border-radius:14px;background:var(--cardAlt);margin-top:12px;border:1.5px solid transparent;transition:border-color .15s,background .15s}
   .revtoggle.on{border-color:var(--s3);background:color-mix(in srgb,var(--s3) 12%,var(--cardAlt))}
   .revcheck{width:26px;height:26px;border-radius:13px;display:flex;align-items:center;justify-content:center;color:var(--s3);flex:none}
@@ -397,6 +399,8 @@ function deleteTopic(id){ db.topics=db.topics.filter(t=>t.id!==id); saveDB(); }
 function setTopicStage(id,to){ const t=db.topics.find(x=>x.id===id); if(!t||t.stage===to)return; t.stage=to; t.stageUpdatedAt=new Date().toISOString(); saveDB(); }
 function addSession(sub,top,startedAt,min,content,reviewOn){ db.sessions.push({id:uid(),subjectId:sub,topicId:top,date:toDateStr(startedAt),startedAt:startedAt.toISOString(),durationMin:min,content:(content&&content.trim())?content.trim():null,reviews:reviewOn?{day1:false,week1:false,month1:false}:null}); if(top!=null){const t=db.topics.find(x=>x.id===top); if(t)t.lastStudiedAt=startedAt.toISOString();} saveDB(); }
 function markReviewDone(sid,key){ const s=db.sessions.find(x=>x.id===sid); if(s&&s.reviews){ s.reviews[key]=true; saveDB(); } }
+function undoReview(sid,key){ const s=db.sessions.find(x=>x.id===sid); if(s&&s.reviews){ s.reviews[key]=false; saveDB(); } }
+function deleteSession(id){ db.sessions=db.sessions.filter(s=>s.id!==id); saveDB(); }
 function addExam(name,date,primary){ if(primary)db.exams.forEach(e=>e.isPrimary=false); db.exams.push({id:uid(),name,date,isPrimary:!!primary}); saveDB(); }
 function updateExam(id,name,date){ const e=db.exams.find(x=>x.id===id); if(e){e.name=name;e.date=date;} saveDB(); }
 function setPrimaryExam(id){ db.exams.forEach(e=>e.isPrimary=(e.id===id)); saveDB(); }
@@ -473,6 +477,13 @@ function dueItems(){
   return {due,up};
 }
 function dueCount(){ return dueItems().due.length; }
+function completedReviews(){
+  const list=[];
+  db.sessions.forEach(s=>{ if(!s.reviews) return; STAGES.forEach(st=>{ if(s.reviews[st.key]) list.push({s,st,dd:parseDate(shiftDate(s.date,st.days)).getTime()}); }); });
+  list.sort((a,b)=>b.dd-a.dd);
+  return list;
+}
+function recentSessions(n){ return db.sessions.slice().sort((a,b)=>String(b.startedAt||"").localeCompare(String(a.startedAt||""))).slice(0,n); }
 function sessionLabel(s){
   if(s.content && s.content.trim()) return s.content;
   const sub=db.subjects.find(x=>x.id===s.subjectId);
@@ -882,6 +893,24 @@ function reviewHTML(){
       return `<div class="trow" style="margin-bottom:8px"><span class="dot" style="width:9px;height:9px;background:${col};flex:none"></span><span class="muted" style="font-size:12px;font-weight:800;margin-left:10px;flex:none">${fmtMD2(shiftDate(d.s.date,d.st.days))}</span><span class="pill" style="margin-left:8px;background:var(--cardAlt);color:var(--subtext);flex:none">${d.st.label.replace("後","")}</span><span class="clip grow" style="font-size:13px;margin-left:10px">${esc(sessionLabel(d.s))}</span></div>`;
     }).join("");
   }
+  const done=completedReviews();
+  if(done.length){
+    const show=done.slice(0,20);
+    body+=`<div class="sect">完了した復習（${done.length}）</div>`;
+    body+=show.map(d=>{
+      const col=subjectColor(d.s.subjectId);
+      return `<div class="trow" style="margin-bottom:8px">
+        <div class="sbar" style="background:${col}"></div>
+        <div class="grow" style="margin-left:12px;min-width:0">
+          <div class="row" style="gap:6px"><span class="pill" style="background:${tint("var(--s3)",15)};color:var(--s3)">✓ ${d.st.label}</span></div>
+          <div class="clip" style="font-size:14px;font-weight:700;margin-top:5px">${esc(sessionLabel(d.s))}</div>
+          <div class="muted" style="font-size:11px;margin-top:2px">予定日 ${fmtMD2(shiftDate(d.s.date,d.st.days))}</div>
+        </div>
+        <button class="undobtn" data-act="undoReview:${d.s.id}:${d.st.key}">戻す</button>
+      </div>`;
+    }).join("");
+    if(done.length>20) body+=`<div class="muted center" style="font-size:11px;margin-top:6px">ほか ${done.length-20}件</div>`;
+  }
   return `<div class="screen safe-top"><div class="hd"><h1>復習</h1></div>${body}</div>`;
 }
 function recordHTML(){
@@ -925,7 +954,22 @@ function recordHTML(){
       <button class="btn ghost" style="margin-top:10px" data-act="manual">${icon("pencil",16)}あとから手動で記録</button>
       <div class="muted center" style="font-size:11px;margin-top:14px">タイマーはこの画面を開いている間だけ動きます</div>`;
   }
-  return `<div class="screen safe-top"><div class="hd"><h1>記録</h1></div>${body}</div>`;
+  const recent=recentSessions(15);
+  let hist="";
+  if(recent.length){
+    hist=`<div class="sect">最近の記録</div>`+recent.map(s=>{
+      const sub=db.subjects.find(x=>x.id===s.subjectId), col=sub?sub.color:"var(--accent)";
+      return `<div class="trow" style="margin-bottom:8px">
+        <div class="sbar" style="background:${col}"></div>
+        <div class="grow" style="margin-left:12px;min-width:0">
+          <div class="clip" style="font-size:14px;font-weight:700">${esc(sessionLabel(s))}</div>
+          <div class="muted" style="font-size:11px;margin-top:2px">${fmtMD2(s.date)} ・ ${formatMinutes(s.durationMin)}${s.reviews?" ・ 復習ON":""}</div>
+        </div>
+        <button class="iconbtn" data-act="delSession:${s.id}" style="width:36px;height:36px;background:transparent;color:var(--danger);font-size:17px">🗑</button>
+      </div>`;
+    }).join("")+`<div class="muted center" style="font-size:11px;margin-top:6px">誤って記録した学習はここで削除できます</div>`;
+  }
+  return `<div class="screen safe-top"><div class="hd"><h1>記録</h1></div>${body}${hist}</div>`;
 }
 let recState={subject:null,topic:null,mode:"countdown",timerMin:25};
 
@@ -1282,6 +1326,8 @@ function dispatch(act,e){
 
     // 復習
     case "markDone": { markReviewDone(Number(a),b); render(); toast("復習を完了にしました"); } break;
+    case "undoReview": { undoReview(Number(a),b); render(); toast("復習を未完了に戻しました"); } break;
+    case "delSession": { const s=db.sessions.find(x=>x.id===Number(a)); if(s&&confirm((s.content?"「"+s.content+"」":formatMinutes(s.durationMin)+"の記録")+"を削除しますか?")){ deleteSession(Number(a)); render(); toast("記録を削除しました"); } } break;
 
     case "addExam": openModal("exam",{}); break;
     case "editExam": openModal("exam",{editingId:Number(a)}); break;
