@@ -390,6 +390,7 @@ function otherExams(primaryId){ return db.exams.filter(e=>e.id!==primaryId).sort
 function createSubject(name,color,icon){ const id=uid(); db.subjects.push({id,name,color,icon,order:db.subjects.length,archived:false,createdAt:new Date().toISOString()}); saveDB(); return id; }
 function updateSubject(id,patch){ const s=db.subjects.find(x=>x.id===id); if(s)Object.assign(s,patch); saveDB(); }
 function archiveSubject(id){ const s=db.subjects.find(x=>x.id===id); if(s)s.archived=true; saveDB(); }
+function unarchiveSubject(id){ const s=db.subjects.find(x=>x.id===id); if(s)s.archived=false; saveDB(); }
 function deleteSubject(id){ db.subjects=db.subjects.filter(s=>s.id!==id); const tids=db.topics.filter(t=>t.subjectId===id).map(t=>t.id); db.topics=db.topics.filter(t=>t.subjectId!==id); db.sessions=db.sessions.filter(se=>se.subjectId!==id); saveDB(); }
 function createTopic(sid,name){ const id=uid(); const n=db.topics.filter(t=>t.subjectId===sid).length; db.topics.push({id,subjectId:sid,name,stage:0,memo:null,order:n,lastStudiedAt:null,stageUpdatedAt:null,createdAt:new Date().toISOString()}); saveDB(); return id; }
 function createTopicsBulk(sid,names){ names.forEach(n=>createTopic(sid,n)); }
@@ -493,6 +494,13 @@ function sessionLabel(s){
   return "学習記録";
 }
 function subjectColor(id){ const s=db.subjects.find(x=>x.id===id); return s?s.color:"#8AA2FF"; }
+function subjectNameOf(id){ const s=db.subjects.find(x=>x.id===id); return s?s.name:"?"; }
+function reviewTitle(s){
+  if(s.content && s.content.trim()) return s.content;
+  const top=s.topicId!=null?db.topics.find(x=>x.id===s.topicId):null;
+  if(top) return top.name;
+  return "学習記録";
+}
 
 /* ---------- ドーナツ(手描きSVG) ---------- */
 function polar(cx,cy,r,deg){ const rad=deg*Math.PI/180; return [cx+r*Math.sin(rad), cy-r*Math.cos(rad)]; }
@@ -755,7 +763,7 @@ function homeHTML(){
     revCard=`<div class="card press" data-act="tab:review" style="background:${tint("var(--danger)",12)}"><div class="row"><div class="bubble" style="background:${tint("var(--danger)",20)};color:var(--danger)">⏰</div><div class="grow" style="margin-left:12px"><div style="font-weight:800;font-size:15px;color:var(--danger)">復習が ${rev.due.length}件 たまっています</div><div class="muted" style="font-size:12px;margin-top:2px">タップして復習する</div></div>${icon("chevronR",18)}</div></div>`;
   } else if(rev.up.length){
     const n=rev.up[0];
-    revCard=`<div class="card"><div class="row"><div class="bubble" style="background:${tint("var(--accent)",14)}">🗓️</div><div class="grow" style="margin-left:12px;min-width:0"><div style="font-weight:800;font-size:14px">次の復習: ${fmtMD2(shiftDate(n.s.date,n.st.days))}</div><div class="clip muted" style="font-size:12px;margin-top:2px">${esc(sessionLabel(n.s))}</div></div></div></div>`;
+    revCard=`<div class="card"><div class="row"><div class="bubble" style="background:${tint("var(--accent)",14)}">🗓️</div><div class="grow" style="margin-left:12px;min-width:0"><div style="font-weight:800;font-size:14px">次の復習: ${fmtMD2(shiftDate(n.s.date,n.st.days))}</div><div class="clip muted" style="font-size:12px;margin-top:2px">${esc(subjectNameOf(n.s.subjectId))} ・ ${esc(reviewTitle(n.s))}</div></div></div></div>`;
   }
 
   const streakCard=`<div class="card"><div class="row"><div class="bubble" style="background:${alpha("#FFB454",0.16)};color:var(--flame)">${icon("flame",20)}</div><div class="grow" style="margin-left:12px">
@@ -796,6 +804,10 @@ function subjectsHTML(){
       <div class="clip" style="font-weight:800;font-size:14px;margin-top:10px;text-align:center">${esc(s.name)}</div>
       <div class="muted center" style="font-size:11px;margin-top:2px">完璧 ${st.perfectCount}/${st.topicCount}</div>
     </button>`;}).join("")+`</div><div class="muted center" style="font-size:11px;margin-top:16px">カードを長押しで編集・削除</div>`;
+  }
+  const archived=db.subjects.filter(s=>s.archived).sort((a,b)=>a.order-b.order);
+  if(archived.length){
+    body+=`<div class="sect">アーカイブ済み（${archived.length}）</div>`+archived.map(s=>`<div class="trow" style="margin-bottom:8px"><div class="bubble" style="background:${alpha(s.color,0.16)};flex:none">${esc(s.icon)}</div><span class="clip grow" style="font-size:14px;font-weight:700;margin-left:12px">${esc(s.name)}</span><button class="undobtn" data-act="unarchiveSubject:${s.id}">戻す</button></div>`).join("")+`<div class="muted center" style="font-size:11px;margin-top:6px">アーカイブは進捗・記録を残したまま一覧から隠す機能です</div>`;
   }
   return `<div class="screen safe-top"><div class="hd"><h1>科目</h1><button class="iconbtn accent" data-act="addSubject">${icon("plus",24)}</button></div>${body}</div>`;
 }
@@ -878,8 +890,8 @@ function reviewHTML(){
       return `<div class="trow" style="margin-bottom:8px;align-items:stretch">
         <div class="sbar" style="background:${col}"></div>
         <div class="grow" style="margin-left:12px;min-width:0">
-          <div class="row" style="gap:6px;flex-wrap:wrap"><span class="pill" style="background:${tint(col,15)};color:${col}">${d.st.label}の復習</span>${d.over?`<span class="pill" style="background:${tint("var(--danger)",15)};color:var(--danger)">${over}日超過</span>`:""}</div>
-          <div class="clip" style="font-size:14px;font-weight:700;margin-top:5px">${esc(sessionLabel(d.s))}</div>
+          <div class="row" style="gap:6px;flex-wrap:wrap"><span class="pill" style="background:${tint(col,18)};color:${col}">${esc(subjectNameOf(d.s.subjectId))}</span><span class="pill" style="background:var(--cardAlt);color:var(--subtext)">${d.st.label}の復習</span>${d.over?`<span class="pill" style="background:${tint("var(--danger)",15)};color:var(--danger)">${over}日超過</span>`:""}</div>
+          <div class="clip" style="font-size:14px;font-weight:700;margin-top:5px">${esc(reviewTitle(d.s))}</div>
           <div class="muted" style="font-size:11px;margin-top:2px">学習日 ${fmtMD2(d.s.date)}</div>
         </div>
         <button class="donebtn" data-act="markDone:${d.s.id}:${d.st.key}">完了</button>
@@ -890,7 +902,7 @@ function reviewHTML(){
     body+=`<div class="sect">今後7日の予定</div>`;
     body+=r.up.map(d=>{
       const col=subjectColor(d.s.subjectId);
-      return `<div class="trow" style="margin-bottom:8px"><span class="dot" style="width:9px;height:9px;background:${col};flex:none"></span><span class="muted" style="font-size:12px;font-weight:800;margin-left:10px;flex:none">${fmtMD2(shiftDate(d.s.date,d.st.days))}</span><span class="pill" style="margin-left:8px;background:var(--cardAlt);color:var(--subtext);flex:none">${d.st.label.replace("後","")}</span><span class="clip grow" style="font-size:13px;margin-left:10px">${esc(sessionLabel(d.s))}</span></div>`;
+      return `<div class="trow" style="margin-bottom:8px"><span class="dot" style="width:9px;height:9px;background:${col};flex:none"></span><span class="muted" style="font-size:12px;font-weight:800;margin-left:10px;flex:none">${fmtMD2(shiftDate(d.s.date,d.st.days))}</span><span class="pill" style="margin-left:8px;background:var(--cardAlt);color:var(--subtext);flex:none">${d.st.label.replace("後","")}</span><span class="clip grow" style="font-size:13px;margin-left:10px"><b style="color:${col}">${esc(subjectNameOf(d.s.subjectId))}</b> ・ ${esc(reviewTitle(d.s))}</span></div>`;
     }).join("");
   }
   const done=completedReviews();
@@ -902,8 +914,8 @@ function reviewHTML(){
       return `<div class="trow" style="margin-bottom:8px">
         <div class="sbar" style="background:${col}"></div>
         <div class="grow" style="margin-left:12px;min-width:0">
-          <div class="row" style="gap:6px"><span class="pill" style="background:${tint("var(--s3)",15)};color:var(--s3)">✓ ${d.st.label}</span></div>
-          <div class="clip" style="font-size:14px;font-weight:700;margin-top:5px">${esc(sessionLabel(d.s))}</div>
+          <div class="row" style="gap:6px;flex-wrap:wrap"><span class="pill" style="background:${tint(col,18)};color:${col}">${esc(subjectNameOf(d.s.subjectId))}</span><span class="pill" style="background:${tint("var(--s3)",15)};color:var(--s3)">✓ ${d.st.label}</span></div>
+          <div class="clip" style="font-size:14px;font-weight:700;margin-top:5px">${esc(reviewTitle(d.s))}</div>
           <div class="muted" style="font-size:11px;margin-top:2px">予定日 ${fmtMD2(shiftDate(d.s.date,d.st.days))}</div>
         </div>
         <button class="undobtn" data-act="undoReview:${d.s.id}:${d.st.key}">戻す</button>
@@ -963,7 +975,7 @@ function recordHTML(){
         <div class="sbar" style="background:${col}"></div>
         <div class="grow" style="margin-left:12px;min-width:0">
           <div class="clip" style="font-size:14px;font-weight:700">${esc(sessionLabel(s))}</div>
-          <div class="muted" style="font-size:11px;margin-top:2px">${fmtMD2(s.date)} ・ ${formatMinutes(s.durationMin)}${s.reviews?" ・ 復習ON":""}</div>
+          <div class="muted" style="font-size:11px;margin-top:2px">${esc(subjectNameOf(s.subjectId))} ・ ${fmtMD2(s.date)} ・ ${formatMinutes(s.durationMin)}${s.reviews?" ・ 復習ON":""}</div>
         </div>
         <button class="iconbtn" data-act="delSession:${s.id}" style="width:36px;height:36px;background:transparent;color:var(--danger);font-size:17px">🗑</button>
       </div>`;
@@ -1069,7 +1081,8 @@ function modalHTML(){
     const editing=!!modal.editingId;
     return dialog(`${editing?"科目を編集":"科目を追加"}`,`
       <input class="field" id="mName" data-model="name" value="${esc(modalState.name)}" placeholder="科目名(例: 数学)" autofocus>
-      <div class="oblabel">カラー</div><div class="colorrow">${COLOR_CHOICES.map(c=>`<button class="cdot" style="background:${c};border-color:${modalState.color===c?"var(--text)":"transparent"}" data-act="mColor:${encodeURIComponent(c)}"></button>`).join("")}</div>
+      <div class="oblabel">カラー</div><div class="colorrow"><input type="color" id="subjColorInput" value="${esc(modalState.color)}" style="width:30px;height:30px;border-radius:15px">${COLOR_CHOICES.map(c=>`<button class="cdot" style="background:${c};border-color:${modalState.color===c?"var(--text)":"transparent"}" data-act="mColor:${encodeURIComponent(c)}"></button>`).join("")}</div>
+      <div class="muted" style="font-size:11px;margin:-2px 0 6px">左端のピッカーで好きな色を自作できます</div>
       <div class="oblabel">アイコン</div><div class="iconrow">${ICON_CHOICES.map(ic=>`<button class="ichoice" style="${modalState.icon===ic?`background:${alpha(modalState.color,0.18)};border-color:${modalState.color}`:""}" data-act="mIcon:${encodeURIComponent(ic)}">${ic}</button>`).join("")}</div>
       <button class="btn" style="margin-top:12px;background:${modalState.color}" data-act="submitModal">${editing?"保存":"追加"}</button>
     `);
@@ -1134,12 +1147,12 @@ function modalHTML(){
   if(t==="subjmenu"){
     const s=db.subjects.find(x=>x.id===modal.subjectId);
     if(!s) return "";
-    const row=(act,label,color)=>`<button class="sheetrow press" data-act="${act}" style="width:100%"><span style="font-size:15px;font-weight:700;color:${color||"var(--text)"}">${label}</span></button>`;
+    const row=(act,label,sub,color)=>`<button class="sheetrow press" data-act="${act}" style="width:100%"><div class="grow" style="text-align:left"><div style="font-size:15px;font-weight:700;color:${color||"var(--text)"}">${label}</div>${sub?`<div class="muted" style="font-size:11px;margin-top:2px">${sub}</div>`:""}</div></button>`;
     return `<div class="sheetwrap"><div class="sheetbg" data-act="closeModal"></div><div class="sheet">
       <div style="font-size:15px;font-weight:800;margin-bottom:8px">${esc(s.icon)} ${esc(s.name)}</div>
-      ${row("editSubject:"+s.id,"✏️ 編集")}
-      ${row("archiveSubjectC:"+s.id,"📥 アーカイブ（一覧から隠す）")}
-      ${row("deleteSubjectC:"+s.id,"🗑 削除","var(--danger)")}
+      ${row("editSubject:"+s.id,"✏️ 編集","名前・カラー・アイコンを変更")}
+      ${row("archiveSubjectC:"+s.id,"📥 アーカイブ","進捗や記録は残したまま一覧から隠します。終わった科目・使わない科目の整理に。あとから戻せます")}
+      ${row("deleteSubjectC:"+s.id,"🗑 削除","分野と学習記録も完全に消えます","var(--danger)")}
       <button class="btn ghost" style="margin-top:8px" data-act="closeModal">キャンセル</button>
     </div></div>`;
   }
@@ -1303,7 +1316,8 @@ function dispatch(act,e){
     case "editSubject": openModal("subject",{editingId:Number(a)}); break;
     case "subjMenu": subjectMenu(Number(a)); break;
     case "archiveSubject": archiveSubject(Number(a)); render(); break;
-    case "archiveSubjectC": archiveSubject(Number(a)); modal=null; render(); toast("アーカイブしました"); break;
+    case "archiveSubjectC": archiveSubject(Number(a)); modal=null; render(); toast("アーカイブしました（一覧下部から戻せます）"); break;
+    case "unarchiveSubject": unarchiveSubject(Number(a)); render(); toast("科目を一覧に戻しました"); break;
     case "deleteSubjectC": if(confirm("この科目の分野と学習記録も削除されます。よろしいですか?")){ deleteSubject(Number(a)); modal=null; render(); toast("削除しました"); } break;
     case "deleteSubject": if(confirm("この科目の分野と学習記録も削除されます。よろしいですか?")){ deleteSubject(Number(a)); go({name:"subjects"}); } break;
 
@@ -1454,6 +1468,7 @@ function obNext(){
 document.addEventListener("change",e=>{
   if(e.target && e.target.id==="accentInput"){ setAccentColor(e.target.value); }
   else if(e.target && e.target.id==="themeBaseInput"){ setThemeBase(e.target.value); }
+  else if(e.target && e.target.id==="subjColorInput"){ modalState.color=e.target.value; render(); }
 });
 
 /* ---------- ファイル選択(インポート) ---------- */
