@@ -221,6 +221,11 @@
   input[type="color"]::-moz-color-swatch{border:1.5px solid var(--faint);border-radius:12px}
   .accentrow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:2px}
   .aswatch{width:30px;height:30px;border-radius:15px;border:3px solid transparent;flex:none}
+  input[type="range"]{ -webkit-appearance:none; appearance:none; height:26px; background:transparent; accent-color:var(--accent); cursor:pointer; }
+  input[type="range"]::-webkit-slider-runnable-track{ height:6px; border-radius:3px; background:var(--faint); }
+  input[type="range"]::-webkit-slider-thumb{ -webkit-appearance:none; appearance:none; width:24px; height:24px; margin-top:-9px; border-radius:12px; background:#fff; box-shadow:0 1px 5px rgba(0,0,0,.35); }
+  input[type="range"]::-moz-range-track{ height:6px; border-radius:3px; background:var(--faint); }
+  input[type="range"]::-moz-range-thumb{ width:24px; height:24px; border:none; border-radius:12px; background:#fff; box-shadow:0 1px 5px rgba(0,0,0,.35); }
   .themegrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
   .themecard{border:2px solid var(--faint);border-radius:14px;padding:7px;background:var(--card);text-align:center;transition:transform .08s}
   .themecard:active{transform:scale(.96)}
@@ -230,6 +235,74 @@
   .themedot{width:9px;height:9px;border-radius:5px;background:var(--accent);flex:none}
   .themedot2{height:6px;flex:1;border-radius:3px;background:var(--cardAlt)}
   .themename{font-size:10px;font-weight:800;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  /* ================= iOS級のモーション & 質感 ================= */
+  :root{ --spring:cubic-bezier(.32,.72,0,1); --smooth:cubic-bezier(.4,0,.2,1); }
+  html{ -webkit-text-size-adjust:100%; }
+  body{ text-rendering:optimizeLegibility; }
+  #app{ overflow-x:hidden; }
+  .view-wrap{ min-height:100%; }
+
+  /* --- 画面遷移(push / pop / フェード+スタッガー) --- */
+  @keyframes pushIn{ from{opacity:.35; transform:translateX(24px);} to{opacity:1; transform:none;} }
+  @keyframes popIn{ from{opacity:.35; transform:translateX(-24px);} to{opacity:1; transform:none;} }
+  @keyframes itemRise{ from{opacity:0; transform:translateY(14px);} to{opacity:1; transform:none;} }
+  .view-enter-push{ animation:pushIn .38s var(--spring) both; }
+  .view-enter-pop{ animation:popIn .38s var(--spring) both; }
+  .view-enter-fade .screen>*, .view-enter-fade .backhd{ animation:itemRise .46s var(--spring) both; }
+  .view-enter-fade .screen>*:nth-child(1){animation-delay:.00s}
+  .view-enter-fade .screen>*:nth-child(2){animation-delay:.035s}
+  .view-enter-fade .screen>*:nth-child(3){animation-delay:.07s}
+  .view-enter-fade .screen>*:nth-child(4){animation-delay:.10s}
+  .view-enter-fade .screen>*:nth-child(5){animation-delay:.13s}
+  .view-enter-fade .screen>*:nth-child(6){animation-delay:.16s}
+  .view-enter-fade .screen>*:nth-child(7){animation-delay:.185s}
+  .view-enter-fade .screen>*:nth-child(8){animation-delay:.21s}
+  .view-enter-fade .screen>*:nth-child(n+9){animation-delay:.23s}
+
+  /* --- シート/ダイアログのスプリング登場 --- */
+  @keyframes sheetIn{ from{transform:translateY(100%);} to{transform:none;} }
+  @keyframes dialogIn{ from{opacity:0; transform:translateY(10px) scale(.955);} to{opacity:1; transform:none;} }
+  @keyframes fadeIn{ from{opacity:0;} to{opacity:1;} }
+  .sheet-enter{ animation:sheetIn .4s var(--spring) both; }
+  .dialog-enter{ animation:dialogIn .28s var(--spring) both; }
+  .fade-enter{ animation:fadeIn .32s ease both; }
+
+  /* --- 押下マイクロインタラクション(全インタラクティブ要素) --- */
+  .press,.btn,.chip,.cell,.trow,.sheetrow,.cdot,.ichoice,.themecard,.donebtn,.undobtn,.iconbtn,.aswatch,.tab,.link,.revtoggle,.pcell,.obdot{
+    transition:transform .2s var(--spring), background-color .22s var(--smooth), color .22s var(--smooth), border-color .22s var(--smooth), box-shadow .24s var(--smooth), opacity .2s var(--smooth);
+  }
+  .press:active,.cell:active,.trow:active,.sheetrow:active,.pcell:active{ transform:scale(.972); }
+  .btn:active{ transform:scale(.965); }
+  .chip:active,.cdot:active,.ichoice:active,.themecard:active,.aswatch:active{ transform:scale(.93); }
+  .donebtn:active,.undobtn:active,.iconbtn:active,.link:active{ transform:scale(.9); }
+  .revtoggle:active{ transform:scale(.985); }
+
+  /* --- タブバー(iOSのすりガラス & アクティブ表現) --- */
+  .tabbar{ backdrop-filter:blur(24px) saturate(180%); -webkit-backdrop-filter:blur(24px) saturate(180%); }
+  .tab .ic{ transition:transform .28s var(--spring); }
+  .tab span:last-child{ transition:color .22s var(--smooth); }
+  .tab.on .tabicwrap{ transform:translateY(-1px); }
+  .tab.on .ic{ transform:scale(1.08); }
+  .badge{ animation:badgePop .34s var(--spring) both; }
+  @keyframes badgePop{ from{transform:scale(0);} to{transform:scale(1);} }
+
+  /* --- リングの充填はスプリングで --- */
+  .ringfg{ transition:stroke-dashoffset .85s var(--spring) !important; }
+
+  /* --- タイポグラフィ(SFのタイトなトラッキング) --- */
+  .hd h1,.backhd .title,.tnum,.donutTot,.obh1{ letter-spacing:-.022em; }
+  .sect{ letter-spacing:.01em; }
+
+  /* --- 奥行き(やわらかい多層シャドウ) --- */
+  .card{ box-shadow:0 1px 2px rgba(0,0,0,.05), 0 6px 20px var(--shadow); }
+  .cell{ box-shadow:0 1px 2px rgba(0,0,0,.05), 0 6px 18px var(--shadow); }
+  .dialog,.sheet{ box-shadow:0 -2px 40px rgba(0,0,0,.28); }
+
+  /* --- トースト/コンフェッティは既存のまま。動きを控えたい人へ配慮 --- */
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{ animation-duration:.001ms !important; animation-delay:0s !important; transition-duration:.001ms !important; }
+  }
 </style>
 </head>
 <body>
@@ -314,7 +387,7 @@ function nextCommonTestDate(){
 }
 
 /* ---------- データ層(localStorage) ---------- */
-function defaultDB(){return {schemaVersion:2, seq:0, settings:{theme:"midnight",onboarded:false,school:null,customAccent:null,customTheme:"#4F86F7",goal:null}, subjects:[], topics:[], sessions:[], exams:[]};}
+function defaultDB(){return {schemaVersion:2, seq:0, settings:{theme:"midnight",onboarded:false,school:null,customAccent:null,customTheme:"#4F86F7",goal:null,soundOn:true,soundVol:0.5}, subjects:[], topics:[], sessions:[], exams:[]};}
 function normalizeV2(p){
   const d=Object.assign(defaultDB(), p);
   d.settings=Object.assign(defaultDB().settings, p.settings||{});
@@ -448,6 +521,48 @@ function applyAccent(){
 function setAccentColor(hex){ db.settings.customAccent=hex; saveDB(); applyAccent(); render(); }
 function resetAccentColor(){ db.settings.customAccent=null; saveDB(); applyAccent(); render(); }
 function setThemeBase(hex){ db.settings.customTheme=hex; db.settings.theme="custom"; saveDB(); applyAccent(); render(); }
+
+/* ---------- 効果音(Web Audioで合成・外部ファイル不要) ---------- */
+let _audioCtx=null;
+function audioCtx(){
+  if(_audioCtx) return _audioCtx;
+  const AC=window.AudioContext||window.webkitAudioContext;
+  if(!AC) return null;
+  try{ _audioCtx=new AC(); }catch(e){ return null; }
+  return _audioCtx;
+}
+// type: tap(軽いクリック) / select(選択) / success(完了・記録) / back / toggle / error
+function playSound(type){
+  if(!db.settings.soundOn) return;
+  const vol=(typeof db.settings.soundVol==="number"?db.settings.soundVol:0.5);
+  if(vol<=0) return;
+  const ctx=audioCtx(); if(!ctx) return;
+  if(ctx.state==="suspended"){ try{ctx.resume();}catch(e){} }
+  const now=ctx.currentTime;
+  const notes={
+    tap:[[880,0.05]],
+    select:[[660,0.06]],
+    toggle:[[740,0.05]],
+    back:[[520,0.07]],
+    success:[[784,0.09],[1175,0.14]],   // G5 → D6 の上行
+    error:[[300,0.12],[220,0.16]],       // 下行
+  }[type]||[[880,0.05]];
+  const master=ctx.createGain();
+  master.gain.value=Math.max(0,Math.min(1,vol))*0.32; // 全体の上限を抑える
+  master.connect(ctx.destination);
+  notes.forEach((n,i)=>{
+    const [freq,dur]=n, t0=now+i*0.06;
+    const osc=ctx.createOscillator(), g=ctx.createGain();
+    osc.type="sine"; osc.frequency.value=freq;
+    g.gain.setValueAtTime(0.0001,t0);
+    g.gain.exponentialRampToValueAtTime(1,t0+0.008);   // 速いアタック
+    g.gain.exponentialRampToValueAtTime(0.0001,t0+dur); // なめらかな減衰
+    osc.connect(g); g.connect(master);
+    osc.start(t0); osc.stop(t0+dur+0.02);
+  });
+}
+function setSoundOn(on){ db.settings.soundOn=on; saveDB(); if(on)playSound("select"); render(); }
+function setSoundVol(v){ db.settings.soundVol=Math.max(0,Math.min(1,v)); saveDB(); }
 
 /* ---------- トースト ---------- */
 let toastTimer=null;
@@ -676,19 +791,25 @@ let timer = null;        // {subjectId, topicId, mode, startedAt}
 let timerInt = null;
 let confettiOn = false;
 let ob = null;           // オンボーディング状態
+let animNav = true;      // 次のrenderで画面遷移アニメを再生するか(初回はtrue)
+let navDir = "fade";     // push / pop / fade
+let animOverlay = false; // モーダル/シートの登場アニメ
 
 const TABS = ["home","subjects","review","record","stats"];
 const isTab = n => TABS.includes(n);
 
-function go(v){ view=v; window.scrollTo(0,0); render(); }
-function back(){
-  if(view.name==="topic"){ const t=db.topics.find(x=>x.id===view.id); go(t?{name:"subject",id:t.subjectId}:{name:"subjects"}); }
-  else if(view.name==="subject") go({name:"subjects"});
-  else if(view.name==="exams") go({name:"settings"});
-  else if(view.name==="settings") go({name:"home"});
-  else go({name:"home"});
+function go(v,dir){
+  if(!dir){ const detail=["subject","topic","settings","exams"].includes(v.name); dir=detail?"push":"fade"; }
+  navDir=dir; animNav=true; view=v; window.scrollTo(0,0); render();
 }
-function openModal(type,data){ modal=Object.assign({type},data||{}); initModalState(); render(); }
+function back(){
+  if(view.name==="topic"){ const t=db.topics.find(x=>x.id===view.id); go(t?{name:"subject",id:t.subjectId}:{name:"subjects"},"pop"); }
+  else if(view.name==="subject") go({name:"subjects"},"pop");
+  else if(view.name==="exams") go({name:"settings"},"pop");
+  else if(view.name==="settings") go({name:"home"},"pop");
+  else go({name:"home"},"pop");
+}
+function openModal(type,data){ modal=Object.assign({type},data||{}); initModalState(); animOverlay=true; render(); }
 function closeModal(){ modal=null; modalState={}; render(); }
 function initModalState(){
   modalState={};
@@ -712,15 +833,26 @@ function render(){
   applyAccent();
   if(!db.settings.onboarded){ if(!ob)ob={step:0,school:"",examName:"共通テスト",examDate:nextCommonTestDate(),selected:new Set()}; app.innerHTML=onboardingHTML(); flushToast(); return; }
 
-  let html;
+  let inner, tb="";
   if(isTab(view.name)){
-    html = ({home:homeHTML,subjects:subjectsHTML,review:reviewHTML,record:recordHTML,stats:statsHTML}[view.name])() + tabbarHTML(view.name);
+    inner = ({home:homeHTML,subjects:subjectsHTML,review:reviewHTML,record:recordHTML,stats:statsHTML}[view.name])();
+    tb = tabbarHTML(view.name);
   } else {
-    html = ({subject:subjectHTML,topic:topicHTML,settings:settingsHTML,exams:examsHTML}[view.name])();
+    inner = ({subject:subjectHTML,topic:topicHTML,settings:settingsHTML,exams:examsHTML}[view.name])();
   }
+  let html = `<div class="view-wrap${animNav?" view-enter view-enter-"+navDir:""}">${inner}</div>` + tb;
   if(modal) html += modalHTML();
   if(confettiOn) html += confettiHTML();
   app.innerHTML = html;
+  animNav=false;
+
+  // モーダル/シートの登場アニメ(初回表示時のみ)
+  if(modal && animOverlay){
+    const dlg=app.querySelector(".dialog"); if(dlg) dlg.classList.add("dialog-enter");
+    const sh=app.querySelector(".sheet"); if(sh) sh.classList.add("sheet-enter");
+    app.querySelectorAll(".backdrop,.sheetbg").forEach(el=>el.classList.add("fade-enter"));
+  }
+  animOverlay=false;
 
   // タイマー稼働中は表示を即同期
   if(timer && view.name==="record") updateTimerDisplay();
@@ -1048,6 +1180,12 @@ function settingsHTML(){
       ${db.settings.customAccent?`<button class="link" data-act="resetAccent">リセット</button>`:""}
     </div><div class="muted" style="font-size:11px;margin-top:8px">テーマの上からお好みの1色で上書きできます。</div></div>
 
+    <div class="sect">効果音</div>
+    <div class="card">
+      <button class="revtoggle ${db.settings.soundOn?"on":""}" style="margin-top:0" data-act="toggleSound"><span class="revcheck">${db.settings.soundOn?icon("check",22):`<span class="revempty"></span>`}</span><div class="grow" style="text-align:left"><div style="font-weight:800;font-size:14px">ボタンの効果音</div><div class="muted" style="font-size:11px;margin-top:1px">操作時に軽い音を鳴らします</div></div></button>
+      ${db.settings.soundOn?`<div class="row" style="gap:12px;align-items:center;margin-top:14px"><span style="font-size:16px">🔈</span><input type="range" id="soundVolInput" min="0" max="100" value="${Math.round((db.settings.soundVol!=null?db.settings.soundVol:0.5)*100)}" style="flex:1"><span style="font-size:16px">🔊</span><span class="muted" style="font-size:12px;font-weight:800;width:38px;text-align:right">${Math.round((db.settings.soundVol!=null?db.settings.soundVol:0.5)*100)}%</span></div><button class="btn ghost" style="margin-top:12px" data-act="testSound">🎵 音をテスト</button>`:""}
+    </div>
+
     <div class="sect">データ</div>
     <div class="card" style="padding:6px">
       <button class="row" style="width:100%;padding:12px" data-act="export"><span style="color:var(--accent)">${icon("share",19)}</span><div class="grow" style="margin-left:12px;text-align:left"><div style="font-weight:800;font-size:15px">エクスポート(JSON)</div><div class="muted" style="font-size:12px;margin-top:2px">機種変更やバックアップ用に書き出し</div></div></button>
@@ -1275,6 +1413,11 @@ const app=document.getElementById("app");
 // 入力の同期(色ピック等で再描画してもテキストが消えないように)
 app.addEventListener("input",e=>{
   if(e.target.id==="timerMinInput"){ const v=parseInt(e.target.value,10); if(Number.isFinite(v))recState.timerMin=v; return; }
+  if(e.target.id==="soundVolInput"){
+    const v=parseInt(e.target.value,10)||0; setSoundVol(v/100);
+    const lbl=e.target.parentElement && e.target.parentElement.querySelector("span:last-child"); if(lbl) lbl.textContent=v+"%";
+    return;
+  }
   const m=e.target.getAttribute("data-model");
   if(m){ modalState[m]=e.target.value; }
 });
@@ -1297,9 +1440,19 @@ app.addEventListener("click",e=>{
   // dialog内クリックはbackdropに伝播させない
   if(el.getAttribute("data-act")==="closeModal" && e.target.closest("[data-stop]")) return;
   if(longFired){ longFired=false; return; } // 長押し直後のクリック抑制
-  const actEl=e.target.closest("[data-stop]") && !e.target.closest("[data-act]")?null:el;
-  dispatch(el.getAttribute("data-act"), e);
+  const act=el.getAttribute("data-act");
+  playSound(soundFor(act));
+  dispatch(act, e);
 });
+function soundFor(act){
+  const cmd=act.split(":")[0];
+  if(["back","discardTimer","discardSave","closeModal"].includes(cmd)) return "back";
+  if(["markDone","commitSave","submitManual","submitModal","finishTimer"].includes(cmd)) return "success";
+  if(["delSession","deleteSubjectC","undoReview","resetAccent","deleteGoal"].includes(cmd)) return "toggle";
+  if(cmd==="toggleReview") return "toggle";
+  if(["setTheme","setAccent","recMode","recMin","mColor","mIcon","mPreset","statsRange","recSub","recTop","saveStage","sheetStage","setStage","tab","pauseTimer","resumeTimer","startTimer"].includes(cmd)) return "select";
+  return "tap";
+}
 
 function dispatch(act,e){
   const [cmd,a,b]=act.split(":");
@@ -1335,6 +1488,8 @@ function dispatch(act,e){
     case "import": document.getElementById("importFile").click(); break;
 
     case "setSchool": openModal("school",{}); break;
+    case "toggleSound": setSoundOn(!db.settings.soundOn); break;
+    case "testSound": playSound("success"); break;
     case "editGoal": openModal("goal",{}); break;
     case "deleteGoal": if(confirm("目標を削除しますか?")){ db.settings.goal=null; saveDB(); render(); toast("目標を削除しました"); } break;
 
@@ -1469,6 +1624,7 @@ document.addEventListener("change",e=>{
   if(e.target && e.target.id==="accentInput"){ setAccentColor(e.target.value); }
   else if(e.target && e.target.id==="themeBaseInput"){ setThemeBase(e.target.value); }
   else if(e.target && e.target.id==="subjColorInput"){ modalState.color=e.target.value; render(); }
+  else if(e.target && e.target.id==="soundVolInput"){ playSound("select"); }
 });
 
 /* ---------- ファイル選択(インポート) ---------- */
